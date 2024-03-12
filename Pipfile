@@ -14,6 +14,7 @@ torchvision = "*"
 pillow = "*"
 pyarrow = "*"
 opencv-python = "*"
+tensorboard = "*"
 
 [dev-packages]
 
