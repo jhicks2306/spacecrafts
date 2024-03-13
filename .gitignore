@@ -7,3 +7,6 @@ notebooks/data-exploration-and-benchmark.ipynb
 references/
 0.tar
 runs/
+full-model.pt
+trained_model-1.pt
+submission/
