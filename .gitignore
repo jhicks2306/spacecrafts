@@ -10,3 +10,8 @@ runs/
 full-model.pt
 trained_model-1.pt
 submission/
+notebooks/lightning_logs
+notebooks/validation_ids.csv
+.lr_find*
+*.pt
+checkpoint*

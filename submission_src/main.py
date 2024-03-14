@@ -24,7 +24,7 @@ def centered_box(img, scale=0.1):
     Return coordinates for a centered bounding box on the image, defaulting to 10% of the image's height and width.
     """
     # Get image dimensions
-    height, width, _ = img.shape
+    width, height = img.size
     # Calculate the center of the image
     center_x, center_y = width // 2, height // 2
     # Calculate 10% of the image's height and width for the bounding box
@@ -65,7 +65,7 @@ def main(data_dir, output_path):
     submission_format_df = pd.read_csv(submission_format_path, index_col="image_id")
     submission_df = submission_format_df.copy()
     # load pretrained model we included in our submission.zip
-    model = torch.load('full-model.pt')
+    model = torch.load('full-model-5epochs.pt')
     model.eval()
     # add a progress bar using tqdm without spamming the log
     update_iters = min(100, int(submission_format_df.shape[0] / 10))
@@ -87,7 +87,7 @@ def main(data_dir, output_path):
                     transforms.ToTensor(),
                     ])
             img = transform(img)
-            # get yolo result
+            # get model result
             pred = model([img])
             # get bbox coordinates if they exist, otherwise just get a generic box in center of an image
             bbox = (pred[0]['boxes'][0]/ RESIZE).tolist() if len(pred[0]['boxes']) > 0 else centered_box(raw_img)
