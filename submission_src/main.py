@@ -12,11 +12,22 @@ import torch
 import torchvision
 from PIL import Image
 from torchvision.transforms import transforms
+import signal
+import pytorch_lightning as L
+from MyFasterRCNN import MyFasterRCNN
 
 INDEX_COLS = ["chain_id", "i"]
 PREDICTION_COLS = ["x", "y", "z", "qw", "qx", "qy", "qz"]
 REFERENCE_VALUES = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
 RESIZE = (1/8)
+
+# Define a function to handle the alarm signal
+def alarm_handler(signum, frame):
+    raise TimeoutError("Execution time exceeded 1.75 hours")
+
+# Set the alarm signal to trigger after 1.75 hours (6300 seconds)
+signal.signal(signal.SIGALRM, alarm_handler)
+signal.alarm(6300)
 
 
 def centered_box(img, scale=0.1):
@@ -49,55 +60,62 @@ def centered_box(img, scale=0.1):
     type=click.Path(exists=False),
 )
 def main(data_dir, output_path):
-    # locate key files and locations
-    data_dir = Path(data_dir).resolve()
-    output_path = Path(output_path).resolve()
-    submission_format_path = data_dir / "submission_format.csv"
-    images_dir = data_dir / "images"
+    try:
+        # locate key files and locations
+        data_dir = Path(data_dir).resolve()
+        output_path = Path(output_path).resolve()
+        submission_format_path = data_dir / "submission_format.csv"
+        images_dir = data_dir / "images"
 
-    assert data_dir.exists(), f"Data directory does not exist: {data_dir}"
-    assert output_path.parent.exists(), f"Expected output directory {output_path.parent} does not exist"
-    assert submission_format_path.exists(), f"Expected submission format file {submission_format_path} does not exist"
-    assert images_dir.exists(), f"Expected images dir {images_dir} does not exist"
-    logger.info(f"using data dir: {data_dir}")
+        assert data_dir.exists(), f"Data directory does not exist: {data_dir}"
+        assert output_path.parent.exists(), f"Expected output directory {output_path.parent} does not exist"
+        assert submission_format_path.exists(), f"Expected submission format file {submission_format_path} does not exist"
+        assert images_dir.exists(), f"Expected images dir {images_dir} does not exist"
+        logger.info(f"using data dir: {data_dir}")
 
-    # copy the submission format file; we'll use this as template and overwrite placeholders with our own predictions
-    submission_format_df = pd.read_csv(submission_format_path, index_col="image_id")
-    submission_df = submission_format_df.copy()
-    # load pretrained model we included in our submission.zip
-    model = torch.load('full-model-5epochs.pt')
-    model.eval()
-    # add a progress bar using tqdm without spamming the log
-    update_iters = min(100, int(submission_format_df.shape[0] / 10))
-    with open(os.devnull, "w") as devnull:
-        progress_bar = tqdm(
-            enumerate(submission_format_df.index.values),
-            total=submission_format_df.shape[0],
-            miniters=update_iters,
-            file=devnull,
-        )
-        # generate predictions for each image
-        for i, image_id in progress_bar:
-            if (i % update_iters) == 0:
-                logger.info(str(progress_bar))
-            # load the image and transform
-            raw_img = Image.open(str(images_dir / f"{image_id}.png"))
-            img = raw_img.resize((int(raw_img.size[0]*RESIZE), int(raw_img.size[1]*RESIZE)), resample=Image.Resampling.LANCZOS)
-            transform = transforms.Compose([
-                    transforms.ToTensor(),
-                    ])
-            img = transform(img)
-            # get model result
-            pred = model([img])
-            # get bbox coordinates if they exist, otherwise just get a generic box in center of an image
-            bbox = (pred[0]['boxes'][0]/ RESIZE).tolist() if len(pred[0]['boxes']) > 0 else centered_box(raw_img)
-            # convert bbox values to integers
-            bbox = [int(x) for x in bbox]
-            # store the result
-            submission_df.loc[image_id] = bbox
-    # write the submission to the submission output path
-    submission_df.to_csv(output_path, index=True)
+        # copy the submission format file; we'll use this as template and overwrite placeholders with our own predictions
+        submission_format_df = pd.read_csv(submission_format_path, index_col="image_id")
+        submission_df = submission_format_df.copy()
+        # load pretrained model we included in our submission.zip
+        model = torch.load('lightning_model.pt')
+        model.eval()
+        # add a progress bar using tqdm without spamming the log
+        update_iters = min(100, int(submission_format_df.shape[0] / 10))
+        with open(os.devnull, "w") as devnull:
+            progress_bar = tqdm(
+                enumerate(submission_format_df.index.values),
+                total=submission_format_df.shape[0],
+                miniters=update_iters,
+                file=devnull,
+            )
+            # generate predictions for each image
+            for i, image_id in progress_bar:
+                if (i % update_iters) == 0:
+                    logger.info(str(progress_bar))
+                # load the image and transform
+                raw_img = Image.open(str(images_dir / f"{image_id}.png"))
+                img = raw_img.resize((int(raw_img.size[0]*RESIZE), int(raw_img.size[1]*RESIZE)), resample=Image.Resampling.LANCZOS)
+                transform = transforms.Compose([
+                        transforms.ToTensor(),
+                        ])
+                img = transform(img)
+                # get model result
+                pred = model([img])
+                # get bbox coordinates if they exist, otherwise just get a generic box in center of an image
+                bbox = (pred[0]['boxes'][0]/ RESIZE).tolist() if len(pred[0]['boxes']) > 0 else centered_box(raw_img)
+                # convert bbox values to integers
+                bbox = [int(x) for x in bbox]
+                # store the result
+                submission_df.loc[image_id] = bbox
+        # write the submission to the submission output path
+        submission_df.to_csv(output_path, index=True)
+    except TimeoutError as e:
+        print(e)
+    finally:
+        # Cancel the alarm
+        signal.alarm(0)
 
 
 if __name__ == "__main__":
     main()
+

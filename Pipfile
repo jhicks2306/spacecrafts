@@ -16,7 +16,7 @@ pyarrow = "*"
 opencv-python = "*"
 tensorboard = "*"
 tensorflow = "*"
-lightning = "*"
+pytorch-lightning = "==2.1.3"
 
 [dev-packages]
 
