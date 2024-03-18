@@ -3,13 +3,16 @@ example_benchmark/
 example_src/
 data_dev/
 notebooks/data-exploration-and-benchmark.ipynb
+notebooks/yolo*
+*__pycache__
 .github/
 references/
 0.tar
 runs/
 full-model.pt
 trained_model-1.pt
-submission/
+submission
+submission_[1-9]
 notebooks/lightning_logs
 notebooks/validation_ids.csv
 .lr_find*

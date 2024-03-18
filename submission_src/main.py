@@ -15,11 +15,12 @@ from torchvision.transforms import transforms
 import signal
 import pytorch_lightning as L
 from MyFasterRCNN import MyFasterRCNN
+from spacecraft_model import SpacecraftModel
 
 INDEX_COLS = ["chain_id", "i"]
 PREDICTION_COLS = ["x", "y", "z", "qw", "qx", "qy", "qz"]
 REFERENCE_VALUES = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
-RESIZE = (1/8)
+
 
 # Define a function to handle the alarm signal
 def alarm_handler(signum, frame):
@@ -77,7 +78,7 @@ def main(data_dir, output_path):
         submission_format_df = pd.read_csv(submission_format_path, index_col="image_id")
         submission_df = submission_format_df.copy()
         # load pretrained model we included in our submission.zip
-        model = torch.load('lightning_model.pt')
+        model = torch.load('ssd_1epoch.pt')
         model.eval()
         # add a progress bar using tqdm without spamming the log
         update_iters = min(100, int(submission_format_df.shape[0] / 10))
@@ -94,15 +95,15 @@ def main(data_dir, output_path):
                     logger.info(str(progress_bar))
                 # load the image and transform
                 raw_img = Image.open(str(images_dir / f"{image_id}.png"))
-                img = raw_img.resize((int(raw_img.size[0]*RESIZE), int(raw_img.size[1]*RESIZE)), resample=Image.Resampling.LANCZOS)
+                # img = raw_img.resize((int(raw_img.size[0]*RESIZE), int(raw_img.size[1]*RESIZE)), resample=Image.Resampling.LANCZOS)
                 transform = transforms.Compose([
                         transforms.ToTensor(),
                         ])
-                img = transform(img)
+                img = transform(raw_img)
                 # get model result
                 pred = model([img])
                 # get bbox coordinates if they exist, otherwise just get a generic box in center of an image
-                bbox = (pred[0]['boxes'][0]/ RESIZE).tolist() if len(pred[0]['boxes']) > 0 else centered_box(raw_img)
+                bbox = (pred[0]['boxes'][0]).tolist() if len(pred[0]['boxes']) > 0 else centered_box(raw_img)
                 # convert bbox values to integers
                 bbox = [int(x) for x in bbox]
                 # store the result
