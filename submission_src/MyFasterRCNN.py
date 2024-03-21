@@ -3,6 +3,9 @@ import torch
 from torch.utils.data import DataLoader
 
 class MyFasterRCNN(L.LightningModule):
+    """
+    A Lightning module to train Pytorch's implementation of Faster-RCNN.
+    """
     def __init__(self, model, learning_rate=0.001):
         super().__init__()
         self.model = model

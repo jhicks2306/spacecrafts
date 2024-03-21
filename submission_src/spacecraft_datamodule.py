@@ -6,6 +6,9 @@ import pytorch_lightning as L
 
 
 class SpacecraftDataset(torch.utils.data.Dataset):
+    """
+    Dataset module to import and pre-process the Spacecraft image data.
+    """
     def __init__(self, labels_df, meta_df, imgs_dir=None, transforms=None, resize=None):
         self.imgs_dir = imgs_dir
         self.labels_df = labels_df # dataframe of indexes and bbox coordinates
@@ -67,6 +70,9 @@ def collate_fn(batch):
     return list(zip(*batch))
 
 class SpacecraftDataModule(L.LightningDataModule):
+    """
+    Lightning data module to pass Spacecraft data to Lightning models.
+    """
     def __init__(self, dataset=None, batch_size=4):
         super().__init__()
         self.dataset = dataset
@@ -84,8 +90,6 @@ class SpacecraftDataModule(L.LightningDataModule):
             self.train_ds,
             batch_size=self.batch_size,
             shuffle=False,
-            # num_workers=9,
-            # persistent_workers=True,
             collate_fn=collate_fn
         )
 
@@ -94,7 +98,5 @@ class SpacecraftDataModule(L.LightningDataModule):
             self.valid_ds,
             batch_size=self.batch_size,
             shuffle=False,
-            # num_workers=9,
-            # persistent_workers=True,
             collate_fn=collate_fn
         )
